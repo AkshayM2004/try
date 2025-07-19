@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Nearest Table Device</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding-top: 50px;
+      background-color: #f0f8ff;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+    #output {
+      font-size: 20px;
+      color: #333;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📡 Nearest Table Bluetooth Device</h1>
+  <button onclick="startScan()">🔄 Scan</button>
+  <div id="output">Click "Scan" to find the nearest Table device</div>
+
+  <script>
+    let bleScan;
+    let nearest = null;
+    let bestRSSI = -Infinity;
+
+    async function startScan() {
+      const output = document.getElementById("output");
+      output.textContent = "🔍 Scanning for devices...";
+
+      nearest = null;
+      bestRSSI = -Infinity;
+
+      try {
+        // Stop old scan if active
+        if (bleScan && bleScan.active) {
+          bleScan.stop();
+        }
+
+        // Start BLE scan (no pairing needed)
+        bleScan = await navigator.bluetooth.requestLEScan({
+          acceptAllAdvertisements: true,
+          keepRepeatedDevices: true
+        });
+
+        navigator.bluetooth.removeEventListener('advertisementreceived', handleAd);
+        navigator.bluetooth.addEventListener('advertisementreceived', handleAd);
+
+        // Stop scan after 10 seconds
+        setTimeout(() => {
+          bleScan.stop();
+          if (nearest) {
+            output.innerHTML = `✅ Nearest Device: <b>${nearest.name}</b> <br>RSSI: ${bestRSSI}`;
+          } else {
+            output.textContent = "❌ No matching devices (Table name) found.";
+          }
+        }, 10000);
+
+      } catch (err) {
+        output.textContent = "❌ Error: " + err.message;
+      }
+    }
+
+    function handleAd(event) {
+      const name = event.device.name || '';
+      const id = event.device.id;
+      const rssi = event.rssi;
+
+      // Match device name like "Table 1", "Table 2"
+      if (name.toLowerCase().includes("table")) {
+        if (rssi > bestRSSI) {
+          bestRSSI = rssi;
+          nearest = event.device;
+        }
+      }
+    }
+  </script>
+</body>
+</html>
